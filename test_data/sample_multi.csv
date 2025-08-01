@@ -1,0 +1,4 @@
+patient_id,test_code,test_name,value,units,collection_date,lab_name
+12345,UA123,Urine Albumin,28.4,mg/g,2025-07-25T08:00:00Z,LGC
+12345,EG123,eGFR,55,mL/min/1.73m2,2025-07-25T08:00:00Z,BioReference
+12345,GLU456,Glucose,5.8,mmol/L,2025-07-25T08:00:00Z,Quest

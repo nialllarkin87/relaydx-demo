@@ -1,0 +1,2 @@
+patient_id,test_code,test_name,value,units,collection_date,lab_name
+12345,UA123,Urine Albumin,28.4,mg/g,2025-07-25T08:00:00Z,LGC

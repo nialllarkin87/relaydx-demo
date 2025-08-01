@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+hl7apy
+pydantic
+fhir.resources
+pandas
+python-multipart
+streamlit
+sqlmodel
