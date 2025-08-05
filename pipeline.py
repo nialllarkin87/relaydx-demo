@@ -1,11 +1,13 @@
 # pipeline.py
 import yaml
-from ingest.csv_parser import CSVParser
-from ingest.hl7_parser import HL7Parser
-from normalize.transformer import normalize_result
-from output.fhir_builder import build_fhir_resources
+import json
 import requests
 import logging
+
+from ingest.csv_parser import parse_csv
+from ingest.hl7_parser import parse_hl7
+from normalize.transformer import normalize_result
+from output.fhir_builder import build_fhir_resources
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +20,24 @@ class FileConnector:
         self.path = cfg["settings"]["path"]
 
     def read(self):
-        # choose parser by file extension
         if self.path.endswith(".json"):
-            import json
             with open(self.path) as f:
+                # assume your JSON has a top‐level "labResults" array
                 return json.load(f)["labResults"]
-        elif self.path.endswith(".csv"):
-            return CSVParser(self.path).parse()
+
+        with open(self.path) as f:
+            content = f.read()
+
+        if self.path.endswith(".csv"):
+            # parse_csv returns a list of dicts
+            return parse_csv(content)
+
         elif self.path.endswith(".hl7"):
-            return HL7Parser(self.path).parse()
+            # parse_hl7 returns a single dict, so wrap in a list
+            return [parse_hl7(content)]
+
         else:
-            raise ValueError("Unsupported file type")
+            raise ValueError(f"Unsupported file type: {self.path}")
 
 class Parser:
     def __init__(self, records, stage_cfg):
