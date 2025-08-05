@@ -7,8 +7,9 @@ import logging
 from ingest.csv_parser import parse_csv
 from ingest.hl7_parser import parse_hl7
 from normalize.transformer import normalize_result
-from output.fhir_builder import build_fhir_resources
+from output.fhir_builder import build_fhir_output
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def load_yaml(path):
@@ -68,11 +69,13 @@ class FHIRTransformer:
         self.mapped = mapped
 
     def run(self):
-        # build a list of FHIR resources (DiagnosticReport + Observations)
         all_resources = []
         for record in self.mapped:
-            resources = build_fhir_resources(record)
-            all_resources.extend(resources)
+            # this returns a dict: {"diagnostic_report": {...}, "observation": {...}}
+            bundle = build_fhir_output(record)
+            # append both resources into a flat list
+            all_resources.append(bundle["observation"])
+            all_resources.append(bundle["diagnostic_report"])
         return all_resources
 
 class FHIRConnector:
