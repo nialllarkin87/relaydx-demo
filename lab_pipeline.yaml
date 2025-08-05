@@ -1,0 +1,46 @@
+pipelineName: LabResultToFHIR
+
+connectors:
+  inbound:
+    - name: LGC-eGFR-source
+      type: file
+      format: json
+      settings:
+        path: ./test_data/LGC_EGFR_sample.json
+
+  outbound:
+    - name: hapi-fhir
+      type: fhir
+      baseUrl: https://hapi.fhir.org/baseR4
+      auth:
+        type: none
+      headers:
+        Content-Type: application/fhir+json
+
+stages:
+  - id: parse
+    type: Parser
+    input: LGC-eGFR-source
+    settings:
+      recordPath: $.labResults[*]
+
+  - id: normalize
+    type: Normalizer
+    input: parse
+
+  - id: map
+    type: SmartMapper
+    input: normalize
+
+  - id: transform
+    type: FHIRTransformer
+    input: map
+    settings:
+      targetResources:
+        - DiagnosticReport
+        - Observation
+
+  - id: send
+    type: Connector
+    input: transform
+    connector: hapi-fhir
