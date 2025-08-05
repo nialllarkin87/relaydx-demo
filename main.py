@@ -94,3 +94,12 @@ def get_lab_result(id: int, format: str = "json"):
     if format == "fhir":
         return build_fhir_output(norm)
     return norm
+
+import fire
+from pipeline import run_pipeline
+
+def main():
+    fire.Fire({"run_pipeline": run_pipeline})
+
+if __name__ == "__main__":
+    main()
