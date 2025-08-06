@@ -25,7 +25,7 @@ st.markdown("**Enterprise Lab Data Integration Platform** | *Vendor-Agnostic •
 st.markdown("---")
 
 # Main navigation
-demo_tab, config_tab, results_tab = st.tabs(["🚀 Live Demo", "⚙️ Configuration", "📊 Results"])
+demo_tab, config_tab = st.tabs(["🚀 Live Demo", "⚙️ Configuration"])
 
 with demo_tab:
     st.header("Live Lab Data Processing Demo")
@@ -194,33 +194,38 @@ with config_tab:
     with source_tab:
         st.subheader("Lab Vendor Source Configuration")
         
+# Replace the vendor_templates section in your ui.py (around line 200) with this:
+
         vendor_templates = {
             "LGC": {
-                "name": "LGC Genomics",
+                "name": "Let's Get Checked",
                 "type": "json",
                 "format": "lgc_egfr",
-                "endpoint": "https://api.lgc.com/results",
+                "endpoint": "https://api.lgc.com/results/egfr",
                 "auth_type": "api_key",
                 "parser": "lgc_egfr_parser",
-                "test_types": ["eGFR", "Creatinine", "BUN", "Comprehensive Metabolic Panel"]
+                "test_types": ["eGFR (CKD-EPI)"],  # eGFR only
+                "description": "LGC eGFR test results via JSON API"
             },
             "Quest": {
                 "name": "Quest Diagnostics", 
                 "type": "csv",
                 "format": "quest_standard",
-                "endpoint": "sftp://quest.com/results/",
+                "endpoint": "sftp://quest.com/results/egfr/",
                 "auth_type": "certificate",
                 "parser": "quest_egfr_parser", 
-                "test_types": ["eGFR", "Lipid Panel", "HbA1c", "Thyroid Function"]
+                "test_types": ["eGFR (CKD-EPI)"],  # eGFR only
+                "description": "Quest eGFR test results via CSV files"
             },
             "LabCorp": {
                 "name": "LabCorp",
                 "type": "hl7",
                 "format": "hl7_v2.4",
-                "endpoint": "https://api.labcorp.com/hl7",
+                "endpoint": "https://api.labcorp.com/hl7/egfr",
                 "auth_type": "oauth2",
                 "parser": "hl7_parser",
-                "test_types": ["eGFR", "Complete Blood Count", "Basic Metabolic Panel"]
+                "test_types": ["eGFR (CKD-EPI)"],  # eGFR only
+                "description": "LabCorp eGFR test results via HL7 messages"
             }
         }
         
@@ -806,64 +811,6 @@ stages:
                 )
         else:
             st.info("Configure sources first to see active pipeline")
-
-with results_tab:
-    st.header("📊 Processed Lab Results")
-    
-    # Filters
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        patient_filter = st.text_input("Filter by Patient ID")
-    with col2:
-        test_filter = st.text_input("Filter by Test Name")
-    with col3:
-        page_size = st.number_input("Results per page", 1, 50, 10)
-
-    # Query results
-    try:
-        with get_session() as session:
-            query = select(LabResult)
-            if patient_filter:
-                query = query.where(LabResult.patient_id.contains(patient_filter))
-            if test_filter:
-                query = query.where(LabResult.test_name.contains(test_filter))
-            
-            results = session.exec(query.limit(page_size)).all()
-
-        if results:
-            # Display as enhanced table
-            result_data = []
-            for r in results:
-                result_data.append({
-                    "ID": r.id,
-                    "Patient": r.patient_id,
-                    "Test": r.test_name,
-                    "Result": f"{r.result_value} {r.units}",
-                    "Date": r.collection_date.strftime("%Y-%m-%d %H:%M") if r.collection_date else "N/A",
-                    "Lab": r.lab_name,
-                    "Status": r.status
-                })
-            
-            st.dataframe(result_data, use_container_width=True)
-            
-            # Summary stats
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total Results", len(results))
-            with col2:
-                unique_patients = len(set(r.patient_id for r in results))
-                st.metric("Unique Patients", unique_patients)
-            with col3:
-                unique_labs = len(set(r.lab_name for r in results))
-                st.metric("Lab Vendors", unique_labs)
-            with col4:
-                final_results = len([r for r in results if r.status == "final"])
-                st.metric("Final Results", final_results)
-        else:
-            st.info("No results found. Upload some lab files to see data here.")
-            
-    except Exception as e:
-        st.error(f"Database query failed: {e}")
 
 # Demo scenarios at bottom
 st.markdown("---")
