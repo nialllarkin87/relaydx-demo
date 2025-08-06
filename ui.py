@@ -261,37 +261,58 @@ with config_tab:
         st.subheader("Destination Systems & Field Mapping")
         
         # Destination templates with detailed mapping
-        destination_templates = {
+destination_templates = {
             "Epic Oak Street (FHIR R4)": {
                 "name": "Epic Oak Street Health",
                 "type": "fhir",
                 "endpoint": "https://epic-oak.cvs.com/fhir/R4",
                 "format": "fhir_r4_bundle",
-                "description": "Epic 2024 with FHIR R4 API",
+                "description": "Epic 2024 - US Core compliant, production-ready",
                 "required_mappings": {
-                    "patient_reference": "Patient/{patient_id}",
-                    "observation_code": "{{\"system\": \"http://loinc.org\", \"code\": \"{test_code}\"}}",
-                    "value_quantity": "{{\"value\": {result_value}, \"unit\": \"{unit}\", \"system\": \"http://unitsofmeasure.org\"}}",
-                    "effective_datetime": "{timestamp}",
-                    "status": "\"final\""
+                    "epic_patient_id": "EPIC_MRN_LOOKUP({patient_id})",
+                    "patient_name": "EPIC_PATIENT_NAME({patient_id})",
+                    "encounter_id": "EPIC_ENCOUNTER_LOOKUP({patient_id}, {timestamp})",
+                    "lab_organization_id": "EPIC_ORG_LOOKUP('{lab_name}')",
+                    "observation_uuid": "UUID_GENERATE()",
+                    "diagnostic_report_uuid": "UUID_GENERATE()",
+                    "result_value": "{result_value}",
+                    "timestamp": "ISO8601_FORMAT({timestamp})",
+                    "us_core_profile": "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
                 },
                 "conditional_mappings": {
-                    "interpretation": "CASE WHEN {result_value} < 60 THEN 'L' WHEN {result_value} > 120 THEN 'H' ELSE 'N' END",
-                    "alert_flag": "CASE WHEN {result_value} < 30 THEN 'CRITICAL' ELSE 'NORMAL' END"
-                }
+                    "interpretation_code": "CASE WHEN {result_value} >= 90 THEN 'N' WHEN {result_value} >= 60 THEN 'N' WHEN {result_value} >= 30 THEN 'L' ELSE 'LL' END",
+                    "ckd_stage": "CASE WHEN {result_value} >= 90 THEN 'G1 - Normal' WHEN {result_value} >= 60 THEN 'G2 - Mildly decreased' WHEN {result_value} >= 45 THEN 'G3a - Moderately decreased' WHEN {result_value} >= 30 THEN 'G3b - Moderately to severely decreased' WHEN {result_value} >= 15 THEN 'G4 - Severely decreased' ELSE 'G5 - Kidney failure' END",
+                    "snomed_code": "CASE WHEN {result_value} >= 60 THEN '431314004' WHEN {result_value} >= 30 THEN '431855005' WHEN {result_value} >= 15 THEN '431856006' ELSE '433144002' END",
+                    "clinical_interpretation": "CASE WHEN {result_value} >= 90 THEN 'Normal kidney function' WHEN {result_value} >= 30 THEN 'Consider nephrology referral' ELSE 'Urgent nephrology consultation recommended' END",
+                    "bpa_trigger": "CASE WHEN {result_value} < 30 THEN 'NEPHROLOGY_REFERRAL_BPA' WHEN {result_value} < 15 THEN 'RENAL_REPLACEMENT_BPA' ELSE 'NONE' END"
+                },
+                "epic_features": [
+                    "✅ US Core Lab Result Profile",
+                    "✅ Epic Flowsheet Integration", 
+                    "✅ Clinical Decision Support",
+                    "✅ Best Practice Alerts",
+                    "✅ CKD Staging Calculator",
+                    "✅ Provider Notifications"
+                ]
             },
-            "Epic Signify (FHIR STU3)": {
-                "name": "Epic Signify Health", 
-                "type": "fhir",
-                "endpoint": "https://epic-signify.cvs.com/fhir/STU3",
-                "format": "fhir_stu3_bundle",
-                "description": "Epic 2019 with FHIR STU3 API",
+            "Signify Platform API": {
+                "name": "Signify Health Platform",
+                "type": "rest_api",
+                "endpoint": "https://api.signifyhealth.com/v1/lab-results",
+                "format": "json_api",
+                "description": "Signify's proprietary health platform - REST API",
                 "required_mappings": {
-                    "patient_reference": "Patient?identifier={patient_id}",
-                    "observation_code": "{{\"system\": \"http://loinc.org\", \"code\": \"{test_code}\"}}",
-                    "value_quantity": "{{\"value\": {result_value}, \"unit\": \"{unit}\"}}",
-                    "effective_period": "{timestamp}",
-                    "status": "\"final\""
+                    "patient_identifier": "'{patient_id}'",
+                    "test_loinc_code": "'{test_code}'",
+                    "result_value": "{result_value}",
+                    "unit_of_measure": "'{unit}'",
+                    "collection_timestamp": "'{timestamp}'",
+                    "lab_vendor_name": "'{lab_name}'"
+                },
+                "conditional_mappings": {
+                    "risk_score": "CASE WHEN {result_value} < 30 THEN 90 WHEN {result_value} < 60 THEN 70 ELSE 30 END",
+                    "care_priority": "CASE WHEN {result_value} < 30 THEN 'HIGH' WHEN {result_value} < 60 THEN 'MEDIUM' ELSE 'LOW' END",
+                    "care_management_flag": "CASE WHEN {result_value} < 30 THEN 'IMMEDIATE_OUTREACH' ELSE 'ROUTINE_MONITORING' END"
                 }
             },
             "Snowflake EDP": {
@@ -299,7 +320,7 @@ with config_tab:
                 "type": "database",
                 "endpoint": "snowflake://cvs-edp.snowflakecomputing.com",
                 "format": "sql_insert",
-                "description": "Data warehouse for analytics and reporting",
+                "description": "Data warehouse for analytics and cross-BU reporting",
                 "required_mappings": {
                     "PATIENT_KEY": "'{patient_id}'",
                     "TEST_LOINC_CODE": "'{test_code}'", 
@@ -310,7 +331,9 @@ with config_tab:
                 },
                 "conditional_mappings": {
                     "ABNORMAL_FLAG": "CASE WHEN {result_value} < 60 THEN 'LOW' WHEN {result_value} > 120 THEN 'HIGH' ELSE 'NORMAL' END",
-                    "CKD_STAGE": "CASE WHEN {result_value} >= 90 THEN 'G1' WHEN {result_value} >= 60 THEN 'G2' WHEN {result_value} >= 45 THEN 'G3A' WHEN {result_value} >= 30 THEN 'G3B' WHEN {result_value} >= 15 THEN 'G4' ELSE 'G5' END"
+                    "CKD_STAGE": "CASE WHEN {result_value} >= 90 THEN 'G1' WHEN {result_value} >= 60 THEN 'G2' WHEN {result_value} >= 45 THEN 'G3A' WHEN {result_value} >= 30 THEN 'G3B' WHEN {result_value} >= 15 THEN 'G4' ELSE 'G5' END",
+                    "BUSINESS_UNIT": "CASE WHEN '{lab_name}' = 'LGC' THEN 'OAK_STREET' WHEN '{lab_name}' = 'Quest' THEN 'SIGNIFY' ELSE 'UNKNOWN' END",
+                    "QUALITY_MEASURE_ELIGIBLE": "CASE WHEN {result_value} < 60 THEN 'CKD_QUALITY_MEASURE' ELSE 'NONE' END"
                 }
             },
             "Care Team Alerts": {
@@ -318,7 +341,7 @@ with config_tab:
                 "type": "webhook",
                 "endpoint": "https://alerts.cvs.com/api/lab-critical",
                 "format": "json_webhook",
-                "description": "Real-time alerts for critical lab values",
+                "description": "Real-time alerts for critical lab values across all BUs",
                 "required_mappings": {
                     "alert_type": "'LAB_CRITICAL'",
                     "patient_id": "'{patient_id}'",
@@ -328,7 +351,9 @@ with config_tab:
                 },
                 "conditional_mappings": {
                     "severity": "CASE WHEN {result_value} < 15 THEN 'CRITICAL' WHEN {result_value} < 30 THEN 'HIGH' ELSE 'MEDIUM' END",
-                    "action_required": "CASE WHEN {result_value} < 30 THEN 'IMMEDIATE_FOLLOWUP' ELSE 'ROUTINE' END"
+                    "action_required": "CASE WHEN {result_value} < 30 THEN 'IMMEDIATE_FOLLOWUP' ELSE 'ROUTINE' END",
+                    "notify_business_unit": "CASE WHEN '{lab_name}' = 'LGC' THEN 'OAK_STREET_CARE_TEAM' WHEN '{lab_name}' = 'Quest' THEN 'SIGNIFY_CARE_TEAM' ELSE 'GENERAL_CARE_TEAM' END",
+                    "escalation_path": "CASE WHEN {result_value} < 15 THEN 'NEPHROLOGIST_IMMEDIATE' WHEN {result_value} < 30 THEN 'PCP_24HR' ELSE 'ROUTINE_FOLLOWUP' END"
                 }
             }
         }
@@ -337,6 +362,13 @@ with config_tab:
         dest_config = destination_templates[dest_selection]
         
         st.info(f"**{dest_config['name']}** - {dest_config['description']}")
+        
+        # Show Epic-specific features if it's an Epic destination
+        if "Epic" in dest_selection and "epic_features" in dest_config:
+            st.write("**🏥 Epic Integration Features:**")
+            for feature in dest_config["epic_features"]:
+                st.write(feature)
+            st.markdown("---")
         
         # Basic configuration
         with st.expander("🔧 Basic Configuration"):
