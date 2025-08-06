@@ -3,10 +3,17 @@ from ingest.hl7_parser import parse_hl7
 from ingest.csv_parser import parse_csv
 from normalize.transformer import normalize_result
 from output.fhir_builder import build_fhir_output
-from db import get_session
+from db import get_session, init_db
 from models import LabResult
 from sqlmodel import select
-from main import save_result  # <— import the helper
+from main import save_result
+import logging
+
+# Initialize database
+try:
+    init_db()
+except Exception as e:
+    st.error(f"Database initialization failed: {e}")
 
 st.set_page_config(page_title="RelayDX Demo UI", layout="wide")
 st.title("🔬 RelayDX Demo Interface")
@@ -16,81 +23,129 @@ st.markdown("---")
 # Sidebar: Filters & Pagination for Persisted Results
 st.sidebar.header("📋 Persisted Results Filters")
 patient_filter = st.sidebar.text_input("Patient ID")
-test_filter    = st.sidebar.text_input("Test Name Substring")
-page_size      = st.sidebar.number_input("Page size", min_value=1, max_value=50, value=10)
-page           = st.sidebar.number_input("Page number", min_value=1, value=1)
-if st.sidebar.button("Apply Filters"):
-    pass  # triggers rerun
+test_filter = st.sidebar.text_input("Test Name Substring")
+page_size = st.sidebar.number_input("Page size", min_value=1, max_value=50, value=10)
+page = st.sidebar.number_input("Page number", min_value=1, value=1)
 
 # Query and display persisted results
-with get_session() as session:
-    query = select(LabResult)
-    if patient_filter:
-        query = query.where(LabResult.patient_id == patient_filter)
-    if test_filter:
-        query = query.where(LabResult.test_name.contains(test_filter))
-    offset = (page - 1) * page_size
-    results = session.exec(query.offset(offset).limit(page_size)).all()
+try:
+    with get_session() as session:
+        query = select(LabResult)
+        if patient_filter:
+            query = query.where(LabResult.patient_id.contains(patient_filter))
+        if test_filter:
+            query = query.where(LabResult.test_name.contains(test_filter))
+        offset = (page - 1) * page_size
+        results = session.exec(query.offset(offset).limit(page_size)).all()
 
-st.subheader("📊 Persisted Lab Results")
-if results:
-    # Deprecation warning fix: use model_dump() instead of dict()
-    df = [r.model_dump() for r in results]
-    st.dataframe(df)
-else:
-    st.info("No records found for the given filters.")
+    st.subheader("📊 Persisted Lab Results")
+    if results:
+        # Convert to dict for display
+        df = []
+        for r in results:
+            df.append({
+                "ID": r.id,
+                "Patient ID": r.patient_id,
+                "Test Code": r.test_code,
+                "Test Name": r.test_name,
+                "Result Value": r.result_value,
+                "Units": r.units,
+                "Collection Date": r.collection_date,
+                "Lab Name": r.lab_name,
+                "Status": r.status
+            })
+        st.dataframe(df)
+    else:
+        st.info("No records found for the given filters.")
+        
+except Exception as e:
+    st.error(f"Database query failed: {e}")
 
 st.markdown("---")
 
 # File upload & real-time parsing (+ persistence)
-uploaded_file = st.file_uploader("📂 Choose HL7 (.txt/.hl7) or CSV file", type=["txt","hl7","csv"])
+uploaded_file = st.file_uploader("📂 Choose HL7 (.txt/.hl7) or CSV file", type=["txt", "hl7", "csv"])
 if uploaded_file:
-    content = uploaded_file.read().decode("utf-8")
-    name = uploaded_file.name.lower()
+    try:
+        content = uploaded_file.read().decode("utf-8")
+        name = uploaded_file.name.lower()
 
-    # HL7 branch
-    if name.endswith((".hl7",".txt")):
-        st.subheader("HL7 Parsing")
-        try:
-            raw = parse_hl7(content)
-            st.json(raw)
-            norm = normalize_result(raw)
+        # HL7 branch
+        if name.endswith((".hl7", ".txt")):
+            st.subheader("HL7 Parsing")
+            try:
+                # Updated to handle multiple results
+                raw_results = parse_hl7(content)  # This now returns a list
+                st.json(raw_results)
+                
+                # Process each result
+                persisted_ids = []
+                for raw in raw_results:
+                    norm = normalize_result(raw)
+                    rec = save_result(norm)
+                    if hasattr(rec, 'id') and rec.id != 'ERROR':
+                        persisted_ids.append(rec.id)
 
-            # Persist and show ID
-            rec = save_result(norm)
-            st.success(f"Persisted HL7 record with ID: {rec.id}")
+                if persisted_ids:
+                    st.success(f"Persisted HL7 record(s) with ID(s): {persisted_ids}")
+                else:
+                    st.warning("Records processed but persistence may have failed")
 
-            st.subheader("Normalized Result")
-            st.json(norm)
-            st.subheader("FHIR Output")
-            st.json(build_fhir_output(norm))
-        except Exception as e:
-            st.error(f"Error parsing or saving HL7: {e}")
+                # Show normalized and FHIR for first result
+                if raw_results:
+                    first_norm = normalize_result(raw_results[0])
+                    st.subheader("Normalized Result (First)")
+                    st.json(first_norm)
+                    st.subheader("FHIR Output (First)")
+                    st.json(build_fhir_output(first_norm))
+                    
+            except Exception as e:
+                st.error(f"Error parsing or saving HL7: {e}")
+                logging.error(f"HL7 processing error: {e}", exc_info=True)
 
-    # CSV branch
-    elif name.endswith(".csv"):
-        st.subheader("CSV Parsing")
-        try:
-            raws = parse_csv(content)
-            st.json(raws)
+        # CSV branch
+        elif name.endswith(".csv"):
+            st.subheader("CSV Parsing")
+            try:
+                raws = parse_csv(content)
+                st.json(raws)
 
-            norms = [normalize_result(r) for r in raws]
-            # Persist each record
-            persisted_ids = []
-            for norm in norms:
-                rec = save_result(norm)
-                persisted_ids.append(rec.id)
-            st.success(f"Persisted CSV records with IDs: {persisted_ids}")
+                norms = []
+                persisted_ids = []
+                
+                for r in raws:
+                    try:
+                        norm = normalize_result(r)
+                        norms.append(norm)
+                        rec = save_result(norm)
+                        if hasattr(rec, 'id') and rec.id != 'ERROR':
+                            persisted_ids.append(rec.id)
+                    except Exception as e:
+                        st.warning(f"Failed to process one CSV record: {e}")
+                        continue
 
-            st.subheader("Normalized Results")
-            st.json(norms)
-            st.subheader("FHIR Outputs")
-            for n in norms:
-                st.json(build_fhir_output(n))
+                if persisted_ids:
+                    st.success(f"Persisted CSV records with IDs: {persisted_ids}")
+                else:
+                    st.warning("Records processed but persistence may have failed")
 
-        except Exception as e:
-            st.error(f"Error parsing or saving CSV: {e}")
+                if norms:
+                    st.subheader("Normalized Results")
+                    st.json(norms)
+                    st.subheader("FHIR Outputs")
+                    for n in norms:
+                        try:
+                            st.json(build_fhir_output(n))
+                        except Exception as e:
+                            st.error(f"FHIR generation failed: {e}")
 
-    else:
-        st.warning("Unsupported file type. Upload .hl7/.txt or .csv.")
+            except Exception as e:
+                st.error(f"Error parsing or saving CSV: {e}")
+                logging.error(f"CSV processing error: {e}", exc_info=True)
 
+        else:
+            st.warning("Unsupported file type. Upload .hl7/.txt or .csv.")
+            
+    except Exception as e:
+        st.error(f"File processing error: {e}")
+        logging.error(f"File upload error: {e}", exc_info=True)
