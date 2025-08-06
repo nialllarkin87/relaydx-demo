@@ -61,6 +61,8 @@ with demo_tab:
                     
                     # Convert to standard format for normalization
                     converted_results = []
+                    normalized_results = []
+                    persisted_ids = []
                     patient_info = json_data.get("patientIdentification", {})
                     timestamp = json_data.get("timeStamp", "")
                     
@@ -73,38 +75,76 @@ with demo_tab:
                             "timestamp": timestamp
                         }
                         converted_results.append(converted)
-                    
-                    # Process and display results
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.write("**✅ Normalized Results:**")
-                        persisted_ids = []
-                        normalized_results = []
                         
-                        for converted in converted_results:
-                            try:
-                                norm = normalize_result(converted)
-                                normalized_results.append(norm)
-                                rec = save_result(norm)
-                                if hasattr(rec, 'id') and rec.id != 'ERROR':
-                                    persisted_ids.append(rec.id)
-                            except Exception as e:
-                                st.warning(f"Failed to process record: {e}")
-                                continue
-                        
-                        if normalized_results:
-                            st.json(normalized_results[0])
-                            st.success(f"Processed {len(normalized_results)} records | IDs: {persisted_ids}")
+                        # Process each result
+                        try:
+                            norm = normalize_result(converted)
+                            normalized_results.append(norm)
+                            rec = save_result(norm)
+                            if hasattr(rec, 'id') and rec.id != 'ERROR':
+                                persisted_ids.append(rec.id)
+                        except Exception as e:
+                            st.warning(f"Failed to process record: {e}")
+                            continue
                     
-                    with col2:
-                        st.write("**🎯 FHIR Output (Epic-Ready):**")
-                        if normalized_results:
-                            fhir_output = build_fhir_output(normalized_results[0])
-                            st.json(fhir_output)
+                    # Show processing summary
+                    if normalized_results:
+                        st.success(f"✅ Processed {len(normalized_results)} results | Database IDs: {persisted_ids}")
+                        
+                        # Result navigation for multiple results
+                        if len(normalized_results) > 1:
+                            st.markdown("---")
+                            st.subheader(f"📋 Results Navigation ({len(normalized_results)} total)")
                             
-                            # Show Epic compatibility
-                            st.info("✅ Epic FHIR R4 Compatible | ✅ LOINC Coded | ✅ US Core Compliant")
+                            # Result selector
+                            col1, col2, col3 = st.columns([1, 2, 1])
+                            with col1:
+                                if st.button("⬅️ Previous", disabled=False):
+                                    if "json_result_index" not in st.session_state:
+                                        st.session_state.json_result_index = 0
+                                    st.session_state.json_result_index = max(0, st.session_state.json_result_index - 1)
+                            
+                            with col2:
+                                # Initialize session state for result index
+                                if "json_result_index" not in st.session_state:
+                                    st.session_state.json_result_index = 0
+                                
+                                current_index = st.session_state.json_result_index
+                                if current_index >= len(normalized_results):
+                                    current_index = 0
+                                    st.session_state.json_result_index = 0
+                                
+                                st.write(f"**Viewing Result {current_index + 1} of {len(normalized_results)}**")
+                            
+                            with col3:
+                                if st.button("Next ➡️", disabled=False):
+                                    if "json_result_index" not in st.session_state:
+                                        st.session_state.json_result_index = 0
+                                    st.session_state.json_result_index = min(len(normalized_results) - 1, st.session_state.json_result_index + 1)
+                            
+                            # Show current result
+                            current_result = normalized_results[current_index]
+                            current_fhir = build_fhir_output(current_result)
+                            
+                        else:
+                            # Single result
+                            current_index = 0
+                            current_result = normalized_results[0]
+                            current_fhir = build_fhir_output(current_result)
+                        
+                        # Display current result
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.write(f"**✅ Normalized Result {current_index + 1}:**")
+                            st.json(current_result)
+                        
+                        with col2:
+                            st.write(f"**🎯 FHIR Output {current_index + 1} (Epic-Ready):**")
+                            st.json(current_fhir)
+                        
+                        # Show Epic compatibility
+                        st.info("✅ Epic FHIR R4 Compatible | ✅ LOINC Coded | ✅ US Core Compliant")
                         
                 except json.JSONDecodeError as e:
                     st.error(f"Invalid JSON format: {e}")
@@ -117,28 +157,69 @@ with demo_tab:
                 try:
                     raw_results = parse_hl7(content)
                     
+                    with st.expander("Raw HL7 Data", expanded=False):
+                        st.json(raw_results)
+                    
+                    # Process all results
+                    normalized_results = []
+                    persisted_ids = []
+                    for raw in raw_results:
+                        norm = normalize_result(raw)
+                        normalized_results.append(norm)
+                        rec = save_result(norm)
+                        if hasattr(rec, 'id') and rec.id != 'ERROR':
+                            persisted_ids.append(rec.id)
+
+                    st.success(f"✅ Processed {len(raw_results)} HL7 segments | Database IDs: {persisted_ids}")
+                    
+                    # Result navigation for multiple HL7 results
+                    if len(normalized_results) > 1:
+                        st.markdown("---")
+                        st.subheader(f"📋 HL7 Results Navigation ({len(normalized_results)} segments)")
+                        
+                        # HL7 Result selector
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with col1:
+                            if st.button("⬅️ Previous HL7", disabled=False):
+                                if "hl7_result_index" not in st.session_state:
+                                    st.session_state.hl7_result_index = 0
+                                st.session_state.hl7_result_index = max(0, st.session_state.hl7_result_index - 1)
+                        
+                        with col2:
+                            if "hl7_result_index" not in st.session_state:
+                                st.session_state.hl7_result_index = 0
+                            
+                            current_index = st.session_state.hl7_result_index
+                            if current_index >= len(normalized_results):
+                                current_index = 0
+                                st.session_state.hl7_result_index = 0
+                            
+                            st.write(f"**Viewing HL7 Segment {current_index + 1} of {len(normalized_results)}**")
+                        
+                        with col3:
+                            if st.button("Next HL7 ➡️", disabled=False):
+                                if "hl7_result_index" not in st.session_state:
+                                    st.session_state.hl7_result_index = 0
+                                st.session_state.hl7_result_index = min(len(normalized_results) - 1, st.session_state.hl7_result_index + 1)
+                        
+                        current_result = normalized_results[current_index]
+                        current_fhir = build_fhir_output(current_result)
+                        
+                    else:
+                        current_index = 0
+                        current_result = normalized_results[0]
+                        current_fhir = build_fhir_output(current_result)
+                    
+                    # Display current HL7 result
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.write("**Raw HL7 Results:**")
-                        with st.expander("Parsed HL7 Data"):
-                            st.json(raw_results)
-                        
-                        persisted_ids = []
-                        for raw in raw_results:
-                            norm = normalize_result(raw)
-                            rec = save_result(norm)
-                            if hasattr(rec, 'id') and rec.id != 'ERROR':
-                                persisted_ids.append(rec.id)
-
-                        st.success(f"Processed {len(raw_results)} HL7 segments | IDs: {persisted_ids}")
+                        st.write(f"**Normalized HL7 Result {current_index + 1}:**")
+                        st.json(current_result)
                     
                     with col2:
-                        if raw_results:
-                            first_norm = normalize_result(raw_results[0])
-                            st.write("**Normalized + FHIR:**")
-                            st.json(first_norm)
-                            st.json(build_fhir_output(first_norm))
+                        st.write(f"**FHIR Output {current_index + 1}:**")
+                        st.json(current_fhir)
                             
                 except Exception as e:
                     st.error(f"Error parsing HL7: {e}")
@@ -149,33 +230,73 @@ with demo_tab:
                 try:
                     raws = parse_csv(content)
                     
+                    with st.expander("Raw CSV Data", expanded=False):
+                        st.json(raws)
+
+                    # Process all CSV records
+                    normalized_results = []
+                    persisted_ids = []
+                    
+                    for r in raws:
+                        try:
+                            norm = normalize_result(r)
+                            normalized_results.append(norm)
+                            rec = save_result(norm)
+                            if hasattr(rec, 'id') and rec.id != 'ERROR':
+                                persisted_ids.append(rec.id)
+                        except Exception as e:
+                            st.warning(f"Failed to process CSV record: {e}")
+
+                    st.success(f"✅ Processed {len(normalized_results)} CSV records | Database IDs: {persisted_ids}")
+                    
+                    # Result navigation for multiple CSV results
+                    if len(normalized_results) > 1:
+                        st.markdown("---")
+                        st.subheader(f"📋 CSV Results Navigation ({len(normalized_results)} records)")
+                        
+                        # CSV Result selector
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with col1:
+                            if st.button("⬅️ Previous CSV", disabled=False):
+                                if "csv_result_index" not in st.session_state:
+                                    st.session_state.csv_result_index = 0
+                                st.session_state.csv_result_index = max(0, st.session_state.csv_result_index - 1)
+                        
+                        with col2:
+                            if "csv_result_index" not in st.session_state:
+                                st.session_state.csv_result_index = 0
+                            
+                            current_index = st.session_state.csv_result_index
+                            if current_index >= len(normalized_results):
+                                current_index = 0
+                                st.session_state.csv_result_index = 0
+                            
+                            st.write(f"**Viewing CSV Record {current_index + 1} of {len(normalized_results)}**")
+                        
+                        with col3:
+                            if st.button("Next CSV ➡️", disabled=False):
+                                if "csv_result_index" not in st.session_state:
+                                    st.session_state.csv_result_index = 0
+                                st.session_state.csv_result_index = min(len(normalized_results) - 1, st.session_state.csv_result_index + 1)
+                        
+                        current_result = normalized_results[current_index]
+                        current_fhir = build_fhir_output(current_result)
+                        
+                    else:
+                        current_index = 0
+                        current_result = normalized_results[0]
+                        current_fhir = build_fhir_output(current_result)
+                    
+                    # Display current CSV result
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.write("**Raw CSV Data:**")
-                        with st.expander("Parsed CSV Records"):
-                            st.json(raws)
-
-                        norms = []
-                        persisted_ids = []
-                        
-                        for r in raws:
-                            try:
-                                norm = normalize_result(r)
-                                norms.append(norm)
-                                rec = save_result(norm)
-                                if hasattr(rec, 'id') and rec.id != 'ERROR':
-                                    persisted_ids.append(rec.id)
-                            except Exception as e:
-                                st.warning(f"Failed to process CSV record: {e}")
-
-                        st.success(f"Processed {len(norms)} CSV records | IDs: {persisted_ids}")
+                        st.write(f"**Normalized CSV Record {current_index + 1}:**")
+                        st.json(current_result)
                     
                     with col2:
-                        if norms:
-                            st.write("**Normalized + FHIR:**")
-                            st.json(norms[0])
-                            st.json(build_fhir_output(norms[0]))
+                        st.write(f"**FHIR Output {current_index + 1}:**")
+                        st.json(current_fhir)
 
                 except Exception as e:
                     st.error(f"Error parsing CSV: {e}")
