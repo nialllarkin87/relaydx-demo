@@ -8,6 +8,7 @@ from models import LabResult
 from sqlmodel import select
 from main import save_result
 import logging
+import json
 
 # Initialize database
 try:
@@ -17,7 +18,7 @@ except Exception as e:
 
 st.set_page_config(page_title="RelayDX Demo UI", layout="wide")
 st.title("🔬 RelayDX Demo Interface")
-st.markdown("Upload an HL7 or CSV file to see parsing, normalization, persistence, and FHIR output in real time.")
+st.markdown("Upload an HL7, CSV, or JSON file to see parsing, normalization, persistence, and FHIR output in real time.")
 st.markdown("---")
 
 # Sidebar: Filters & Pagination for Persisted Results
@@ -63,15 +64,79 @@ except Exception as e:
 
 st.markdown("---")
 
-# File upload & real-time parsing (+ persistence)
-uploaded_file = st.file_uploader("📂 Choose HL7 (.txt/.hl7) or CSV file", type=["txt", "hl7", "csv"])
+# File upload with JSON support
+uploaded_file = st.file_uploader("📂 Choose HL7 (.txt/.hl7), CSV (.csv), or JSON (.json) file", 
+                                 type=["txt", "hl7", "csv", "json"])
 if uploaded_file:
     try:
         content = uploaded_file.read().decode("utf-8")
         name = uploaded_file.name.lower()
 
+        # JSON branch (for LGC eGFR files)
+        if name.endswith(".json"):
+            st.subheader("JSON Parsing (LGC Format)")
+            try:
+                # Try to parse as JSON first
+                json_data = json.loads(content)
+                st.json(json_data)
+                
+                # For LGC eGFR format, extract lab results
+                if "labResults" in json_data:
+                    lab_results = json_data["labResults"]
+                elif "testResults" in json_data:
+                    lab_results = json_data["testResults"]
+                else:
+                    lab_results = [json_data]  # Single result
+                
+                # Convert to standard format for normalization
+                converted_results = []
+                patient_info = json_data.get("patientIdentification", {})
+                timestamp = json_data.get("timeStamp", "")
+                
+                for lab in lab_results:
+                    # Convert LGC format to standard format
+                    converted = {
+                        "patient_id": f"{patient_info.get('lastName', 'UNK')}^{patient_info.get('firstName', 'UNK')}",
+                        "test_code": lab.get("coding", [{}])[0].get("code", "UNKNOWN") if lab.get("coding") else "UNKNOWN",
+                        "result_value": float(lab.get("quantitativeValue", {}).get("value", 0)) if lab.get("quantitativeValue") else 0,
+                        "unit": lab.get("quantitativeValue", {}).get("unit", "") if lab.get("quantitativeValue") else "",
+                        "timestamp": timestamp
+                    }
+                    converted_results.append(converted)
+                
+                # Process each result
+                persisted_ids = []
+                for converted in converted_results:
+                    try:
+                        norm = normalize_result(converted)
+                        rec = save_result(norm)
+                        if hasattr(rec, 'id') and rec.id != 'ERROR':
+                            persisted_ids.append(rec.id)
+                    except Exception as e:
+                        st.warning(f"Failed to process one JSON record: {e}")
+                        continue
+
+                if persisted_ids:
+                    st.success(f"Persisted JSON record(s) with ID(s): {persisted_ids}")
+                else:
+                    st.warning("Records processed but persistence may have failed")
+
+                # Show normalized and FHIR for first result
+                if converted_results:
+                    first_norm = normalize_result(converted_results[0])
+                    st.subheader("Normalized Result (First)")
+                    st.json(first_norm)
+                    st.subheader("FHIR Output (First)")
+                    st.json(build_fhir_output(first_norm))
+                    
+            except json.JSONDecodeError as e:
+                st.error(f"Invalid JSON format: {e}")
+            except Exception as e:
+                st.error(f"Error parsing or saving JSON: {e}")
+                logging.error(f"JSON processing error: {e}", exc_info=True)
+
         # HL7 branch
-        if name.endswith((".hl7", ".txt")):
+        elif name.endswith((".hl7", ".txt")):
             st.subheader("HL7 Parsing")
             try:
                 # Updated to handle multiple results
@@ -144,7 +209,7 @@ if uploaded_file:
                 logging.error(f"CSV processing error: {e}", exc_info=True)
 
         else:
-            st.warning("Unsupported file type. Upload .hl7/.txt or .csv.")
+            st.warning("Unsupported file type. Upload .hl7/.txt, .csv, or .json files.")
             
     except Exception as e:
         st.error(f"File processing error: {e}")
