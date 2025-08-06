@@ -21,7 +21,7 @@ st.set_page_config(page_title="RelayDX Demo UI", layout="wide")
 
 # Header with platform branding
 st.title("🔬 RelayDX Integration Platform")
-st.markdown("**Enterprise Lab Data Integration for CVS Health** | *Vendor-Agnostic • Epic-Ready • Scalable*")
+st.markdown("**Enterprise Lab Data Integration** ")
 st.markdown("---")
 
 # Main navigation
@@ -260,8 +260,8 @@ with config_tab:
     with dest_tab:
         st.subheader("Destination Systems & Field Mapping")
         
-        # Destination templates with detailed mapping
-destination_templates = {
+        # Enhanced destination templates with Epic features
+        destination_templates = {
             "Epic Oak Street (FHIR R4)": {
                 "name": "Epic Oak Street Health",
                 "type": "fhir",
@@ -630,10 +630,10 @@ with scenario_col1:
         st.code("LGC JSON → Canonical → Epic FHIR\nQuest CSV → Canonical → Epic FHIR")
 
 with scenario_col2:
-    if st.button("🏥 Multi-Epic Demo"):
-        st.success("✅ Demo: Oak Street R4 vs Signify STU3")
-        st.info("Same eGFR data, different Epic versions")
-        st.code("Canonical → Epic R4 Bundle\nCanonical → Epic STU3 Bundle")
+    if st.button("🏥 Multi-System Demo"):
+        st.success("✅ Demo: Oak Street Epic vs Signify Platform")
+        st.info("Same eGFR data, different system formats")
+        st.code("Canonical → Epic FHIR Bundle\nCanonical → Signify REST API")
 
 with scenario_col3:
     if st.button("⚡ Critical Value Demo"):
@@ -643,4 +643,4 @@ with scenario_col3:
 
 # Footer
 st.markdown("---")
-st.markdown("*RelayDX Platform Demo*") 
+st.markdown("*RelayDX Platform Demo*")
