@@ -1,22 +1,20 @@
+# ingest/csv_parser.py
 import pandas as pd
-import io
+from typing import List, Dict
 
-def parse_csv(csv_content: str):
+def parse_csv(content: str) -> List[Dict]:
     """
-    Parse CSV lab results into a list of raw dictionaries.
-    Expected columns: patient_id, test_code, test_name, value, units, collection_date, lab_name
+    content: full CSV text
+    returns: list of raw dicts matching your canonical model keys
     """
-    df = pd.read_csv(io.StringIO(csv_content))
-    results = []
+    df = pd.read_csv(pd.compat.StringIO(content))
+    records = []
     for _, row in df.iterrows():
-        raw = {
-            "patient_id": str(row.get("patient_id")),
-            "vendor_code": row.get("test_code"),
-            "test_name": row.get("test_name"),
-            "value": row.get("value"),
-            "units": row.get("units"),
-            "collection_date": row.get("collection_date"),
-            "lab_name": row.get("lab_name", "UNKNOWN")
-        }
-        results.append(raw)
-    return results
+        records.append({
+            "patient_id": row["Patient_ID"],
+            "test_code": row["Test_LOINC_Code"],
+            "result_value": row["Result"],
+            "unit": row["Units"],
+            "timestamp": row["Result_Date"],
+        })
+    return records

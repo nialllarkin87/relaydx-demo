@@ -1,26 +1,20 @@
-def parse_hl7(hl7_str):
-    lines = hl7_str.strip().split('\n')
-    result = {
-        "patient_id": "UNKNOWN",
-        "test_name": "",
-        "vendor_code": "",
-        "value": "",
-        "units": "",
-        "collection_date": "",
-        "lab_name": "LGC",
-        "status": "final"
+# ingest/hl7_parser.py
+import hl7
+from typing import Dict, List
+
+def parse_hl7(content: str) -> Dict:
+    """
+    Very basic HL7 ORU^R01 parser for one observation
+    """
+    msg = hl7.parse(content)
+    pid = msg.segment('PID')
+    obr = msg.segment('OBR')
+    obx = msg.segment('OBX')
+    return {
+        "patient_id": pid[3][0],                 # e.g. MRN
+        "test_code":  obx[3][0],                 # LOINC
+        "result_value": float(obx[5][0]),
+        "unit": obx[6][0],
+        "timestamp": obr[7][0],                  # Observation Date/Time
     }
 
-    for line in lines:
-        fields = line.strip().split('|')
-        if line.startswith("PID"):
-            result["patient_id"] = fields[3]
-        elif line.startswith("OBR"):
-            result["collection_date"] = fields[7]
-        elif line.startswith("OBX"):
-            result["vendor_code"] = fields[3].split('^')[0]
-            result["test_name"] = fields[3].split('^')[1]
-            result["value"] = fields[5]
-            result["units"] = fields[6]
-
-    return result
