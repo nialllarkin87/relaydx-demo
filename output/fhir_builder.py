@@ -1,6 +1,6 @@
-# output/fhir_builder.py
 from fhir.resources.observation import Observation
 from fhir.resources.diagnosticreport import DiagnosticReport
+from typing import Dict
 import uuid
 
 def build_fhir_output(record: Dict) -> Dict:
