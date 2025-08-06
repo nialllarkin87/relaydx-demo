@@ -437,75 +437,82 @@ with config_tab:
                     updated_mappings[new_field_name] = new_field_mapping
                     st.success("Field added!")
 
+# Replace the entire "Create New Destination" section with this simpler version:
+
         elif mapping_mode == "Create New Destination":
             st.write("**Create Custom Destination:**")
             
-            with st.form("new_destination_form"):
-                col1, col2 = st.columns(2)
-                
+            # Basic destination info (outside form to avoid conflicts)
+            st.write("**Basic Configuration:**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                new_dest_name = st.text_input("Destination Name", placeholder="e.g., Custom Epic System", key="new_dest_name")
+                new_dest_type = st.selectbox("Destination Type", ["fhir", "rest_api", "database", "webhook"], key="new_dest_type")
+                new_dest_endpoint = st.text_input("Endpoint URL", placeholder="https://api.example.com", key="new_dest_endpoint")
+            
+            with col2:
+                new_dest_format = st.text_input("Output Format", placeholder="e.g., fhir_r4_bundle", key="new_dest_format")
+                new_dest_auth = st.selectbox("Authentication", ["oauth2", "api_key", "basic_auth", "certificate"], key="new_dest_auth")
+                new_dest_description = st.text_area("Description", placeholder="Custom destination for...", key="new_dest_description")
+            
+            st.write("**Field Mappings:**")
+            
+            # Initialize session state for fields
+            if "new_dest_fields" not in st.session_state:
+                st.session_state.new_dest_fields = {"patient_id": "'{patient_id}'", "test_code": "'{test_code}'"}
+            
+            # Show current mappings
+            for i, (field_name, mapping_expr) in enumerate(st.session_state.new_dest_fields.items()):
+                col1, col2, col3 = st.columns([2, 3, 1])
                 with col1:
-                    new_dest_name = st.text_input("Destination Name", placeholder="e.g., Custom Epic System")
-                    new_dest_type = st.selectbox("Destination Type", ["fhir", "rest_api", "database", "webhook"])
-                    new_dest_endpoint = st.text_input("Endpoint URL", placeholder="https://api.example.com")
-                
+                    st.text_input(f"Field {i+1}", value=field_name, disabled=True, key=f"display_field_{i}")
                 with col2:
-                    new_dest_format = st.text_input("Output Format", placeholder="e.g., fhir_r4_bundle")
-                    new_dest_auth = st.selectbox("Authentication", ["oauth2", "api_key", "basic_auth", "certificate"])
-                    new_dest_description = st.text_area("Description", placeholder="Custom destination for...")
-                
-                st.write("**Define Field Mappings:**")
-                
-                # Dynamic field mapping creation
-                if "new_dest_fields" not in st.session_state:
-                    st.session_state.new_dest_fields = [{"field": "", "mapping": ""}]
-                
-                # Add field button
-                if st.form_submit_button("➕ Add Mapping Field"):
-                    st.session_state.new_dest_fields.append({"field": "", "mapping": ""})
+                    st.text_input(f"Mapping {i+1}", value=mapping_expr, disabled=True, key=f"display_mapping_{i}")
+                with col3:
+                    if st.button("🗑️", key=f"delete_field_{i}") and len(st.session_state.new_dest_fields) > 1:
+                        del st.session_state.new_dest_fields[field_name]
+                        st.rerun()
+            
+            # Add new field
+            st.write("**Add New Field:**")
+            col1, col2, col3 = st.columns([2, 3, 1])
+            with col1:
+                add_field_name = st.text_input("Field Name", placeholder="e.g., custom_flag", key="add_field_name")
+            with col2:
+                add_field_mapping = st.text_input("Mapping Expression", placeholder="e.g., '{result_value} > 60'", key="add_field_mapping")
+            with col3:
+                if st.button("➕ Add") and add_field_name and add_field_mapping:
+                    st.session_state.new_dest_fields[add_field_name] = add_field_mapping
                     st.rerun()
-                
-                # Display existing fields
-                for i, field_mapping in enumerate(st.session_state.new_dest_fields):
-                    col1, col2, col3 = st.columns([2, 3, 1])
-                    with col1:
-                        field_name = st.text_input(f"Field {i+1}", value=field_mapping["field"], key=f"field_{i}")
-                        st.session_state.new_dest_fields[i]["field"] = field_name
-                    with col2:
-                        mapping_expr = st.text_input(f"Mapping {i+1}", value=field_mapping["mapping"], key=f"mapping_{i}")
-                        st.session_state.new_dest_fields[i]["mapping"] = mapping_expr
-                    with col3:
-                        if st.form_submit_button("🗑️", key=f"delete_{i}") and len(st.session_state.new_dest_fields) > 1:
-                            st.session_state.new_dest_fields.pop(i)
-                            st.rerun()
-                
-                # Create destination
-                if st.form_submit_button("🎯 Create Destination"):
-                    if new_dest_name:
-                        # Build new destination config
-                        new_destination = {
-                            "name": new_dest_name,
-                            "type": new_dest_type,
-                            "endpoint": new_dest_endpoint,
-                            "format": new_dest_format,
-                            "auth_type": new_dest_auth,
-                            "description": new_dest_description,
-                            "required_mappings": {}
-                        }
-                        
-                        # Add field mappings
-                        for field_mapping in st.session_state.new_dest_fields:
-                            if field_mapping["field"] and field_mapping["mapping"]:
-                                new_destination["required_mappings"][field_mapping["field"]] = field_mapping["mapping"]
-                        
-                        # Save to session state
-                        if "custom_destinations" not in st.session_state:
-                            st.session_state.custom_destinations = {}
-                        st.session_state.custom_destinations[new_dest_name] = new_destination
-                        
-                        st.success(f"✅ Created new destination: {new_dest_name}")
-                        st.balloons()
-                    else:
-                        st.error("Please provide a destination name")
+            
+            # Create destination
+            st.markdown("---")
+            if st.button("🎯 Create Destination", type="primary"):
+                if new_dest_name and st.session_state.new_dest_fields:
+                    # Build new destination config
+                    new_destination = {
+                        "name": new_dest_name,
+                        "type": new_dest_type,
+                        "endpoint": new_dest_endpoint,
+                        "format": new_dest_format,
+                        "auth_type": new_dest_auth,
+                        "description": new_dest_description,
+                        "required_mappings": st.session_state.new_dest_fields.copy()
+                    }
+                    
+                    # Save to session state
+                    if "custom_destinations" not in st.session_state:
+                        st.session_state.custom_destinations = {}
+                    st.session_state.custom_destinations[new_dest_name] = new_destination
+                    
+                    # Reset form
+                    st.session_state.new_dest_fields = {"patient_id": "'{patient_id}'", "test_code": "'{test_code}'"}
+                    
+                    st.success(f"✅ Created new destination: {new_dest_name}")
+                    st.balloons()
+                else:
+                    st.error("Please provide a destination name and at least one field mapping")
 
         else:  # View Mappings mode
             # Basic configuration
