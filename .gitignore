@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+env/
+venv/
+
+# SQLite DB
+relaydx_demo.db
