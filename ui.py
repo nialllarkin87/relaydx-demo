@@ -611,4 +611,4 @@ with scenario_col3:
 
 # Footer
 st.markdown("---")
-st.markdown("*RelayDX Platform Demo | Built for CVS Health Epic Migration Strategy*")
+st.markdown("*RelayDX Platform Demo*") 
