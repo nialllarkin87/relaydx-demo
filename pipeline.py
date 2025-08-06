@@ -20,7 +20,14 @@ class FileConnector:
     def read(self):
         if self.path.endswith(".json"):
             with open(self.path) as f:
-                return json.load(f)["labResults"]
+                data = json.load(f)
+                # Handle both labResults and testResults for LGC compatibility
+                if "labResults" in data:
+                    return data["labResults"]
+                elif "testResults" in data:
+                    return data["testResults"]
+                else:
+                    return [data]  # Single result
         with open(self.path) as f:
             content = f.read()
         if self.path.endswith(".csv"):
@@ -42,7 +49,15 @@ class Normalizer:
         self.parsed = parsed
 
     def run(self):
-        return [normalize_result(r) for r in self.parsed]
+        normalized = []
+        for r in self.parsed:
+            try:
+                norm = normalize_result(r)
+                normalized.append(norm)
+            except Exception as e:
+                logger.error(f"Failed to normalize record: {e}")
+                continue
+        return normalized
 
 class SmartMapper:
     def __init__(self, normalized):
@@ -59,10 +74,14 @@ class FHIRTransformer:
     def run(self):
         all_resources = []
         for rec in self.mapped:
-            bundle = build_fhir_output(rec)
-            # append Observation first, then DiagnosticReport
-            all_resources.append(bundle["observation"])
-            all_resources.append(bundle["diagnostic_report"])
+            try:
+                bundle = build_fhir_output(rec)
+                # append Observation first, then DiagnosticReport
+                all_resources.append(bundle["observation"])
+                all_resources.append(bundle["diagnostic_report"])
+            except Exception as e:
+                logger.error(f"Failed to create FHIR resources: {e}")
+                continue
         return all_resources
 
 class FHIRConnector:
@@ -74,29 +93,51 @@ class FHIRConnector:
         for resource in resources:
             rtype = resource["resourceType"]
             url   = f"{self.base_url}/{rtype}"
-            resp  = requests.post(url, json=resource, headers=self.headers)
-            if resp.status_code not in (200, 201):
-                logger.error(f"Failed to POST {rtype}: {resp.status_code} {resp.text}")
-                resp.raise_for_status()
-            else:
-                logger.info(f"POST {rtype} → {resp.status_code}")
+            try:
+                resp  = requests.post(url, json=resource, headers=self.headers, timeout=30)
+                if resp.status_code not in (200, 201):
+                    logger.error(f"Failed to POST {rtype}: {resp.status_code} {resp.text}")
+                    resp.raise_for_status()
+                else:
+                    logger.info(f"POST {rtype} → {resp.status_code}")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Network error posting {rtype}: {e}")
+                raise
 
 def run_pipeline(config_path: str):
     logger.info(f"Loading pipeline config from {config_path}")
-    cfg = load_yaml(config_path)
+    try:
+        cfg = load_yaml(config_path)
+    except Exception as e:
+        logger.error(f"Failed to load config: {e}")
+        return
 
     # Ingest
-    file_cfg = cfg["connectors"]["inbound"][0]
-    records  = FileConnector(file_cfg).read()
-    logger.info(f"Ingested {len(records)} records")
+    try:
+        file_cfg = cfg["connectors"]["inbound"][0]
+        records  = FileConnector(file_cfg).read()
+        logger.info(f"Ingested {len(records)} records")
+    except Exception as e:
+        logger.error(f"Failed to ingest data: {e}")
+        return
 
     # Stages
-    parsed     = Parser(records, cfg["stages"][0]).run()
-    normalized = Normalizer(parsed).run()
-    mapped     = SmartMapper(normalized).run()
-    resources  = FHIRTransformer(mapped).run()
+    try:
+        parsed     = Parser(records, cfg["stages"][0]).run()
+        normalized = Normalizer(parsed).run()
+        mapped     = SmartMapper(normalized).run()
+        resources  = FHIRTransformer(mapped).run()
+        
+        logger.info(f"Processing complete: {len(resources)} FHIR resources created")
+    except Exception as e:
+        logger.error(f"Pipeline processing failed: {e}")
+        return
 
     # Send
-    fhir_cfg = cfg["connectors"]["outbound"][0]
-    FHIRConnector(fhir_cfg).send(resources)
-    logger.info("Pipeline run complete.")
+    try:
+        fhir_cfg = cfg["connectors"]["outbound"][0]
+        FHIRConnector(fhir_cfg).send(resources)
+        logger.info("Pipeline run complete.")
+    except Exception as e:
+        logger.error(f"Failed to send to FHIR endpoint: {e}")
+        raise

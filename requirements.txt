@@ -7,4 +7,5 @@ requests
 python-fire
 fhir.resources
 pandas
-hl7  # if you’re parsing HL7 v2 with a library
+hl7
+pydantic
