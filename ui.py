@@ -21,7 +21,7 @@ st.set_page_config(page_title="RelayDX Demo UI", layout="wide")
 
 # Header with platform branding
 st.title("🔬 RelayDX Integration Platform")
-st.markdown("**Enterprise Lab Data Integration** ")
+st.markdown("**Enterprise Lab Data Integration Platform** | *Vendor-Agnostic • Epic-Ready • Scalable*")
 st.markdown("---")
 
 # Main navigation
@@ -262,10 +262,10 @@ with config_tab:
         
         # Enhanced destination templates with Epic features
         destination_templates = {
-            "Epic Oak Street (FHIR R4)": {
-                "name": "Epic Oak Street Health",
+            "Epic Health System (FHIR R4)": {
+                "name": "Epic Health System",
                 "type": "fhir",
-                "endpoint": "https://epic-oak.cvs.com/fhir/R4",
+                "endpoint": "https://epic-fhir.healthsystem.com/fhir/R4",
                 "format": "fhir_r4_bundle",
                 "description": "Epic 2024 - US Core compliant, production-ready",
                 "required_mappings": {
@@ -295,12 +295,12 @@ with config_tab:
                     "✅ Provider Notifications"
                 ]
             },
-            "Signify Platform API": {
-                "name": "Signify Health Platform",
+            "Health Platform API": {
+                "name": "Health Platform API",
                 "type": "rest_api",
-                "endpoint": "https://api.signifyhealth.com/v1/lab-results",
+                "endpoint": "https://api.healthplatform.com/v1/lab-results",
                 "format": "json_api",
-                "description": "Signify's proprietary health platform - REST API",
+                "description": "Proprietary health platform - REST API",
                 "required_mappings": {
                     "patient_identifier": "'{patient_id}'",
                     "test_loinc_code": "'{test_code}'",
@@ -315,10 +315,10 @@ with config_tab:
                     "care_management_flag": "CASE WHEN {result_value} < 30 THEN 'IMMEDIATE_OUTREACH' ELSE 'ROUTINE_MONITORING' END"
                 }
             },
-            "Snowflake EDP": {
-                "name": "CVS Enterprise Data Platform",
+            "Enterprise Data Platform": {
+                "name": "Enterprise Data Platform",
                 "type": "database",
-                "endpoint": "snowflake://cvs-edp.snowflakecomputing.com",
+                "endpoint": "snowflake://enterprise-edp.snowflakecomputing.com",
                 "format": "sql_insert",
                 "description": "Data warehouse for analytics and cross-BU reporting",
                 "required_mappings": {
@@ -332,14 +332,14 @@ with config_tab:
                 "conditional_mappings": {
                     "ABNORMAL_FLAG": "CASE WHEN {result_value} < 60 THEN 'LOW' WHEN {result_value} > 120 THEN 'HIGH' ELSE 'NORMAL' END",
                     "CKD_STAGE": "CASE WHEN {result_value} >= 90 THEN 'G1' WHEN {result_value} >= 60 THEN 'G2' WHEN {result_value} >= 45 THEN 'G3A' WHEN {result_value} >= 30 THEN 'G3B' WHEN {result_value} >= 15 THEN 'G4' ELSE 'G5' END",
-                    "BUSINESS_UNIT": "CASE WHEN '{lab_name}' = 'LGC' THEN 'OAK_STREET' WHEN '{lab_name}' = 'Quest' THEN 'SIGNIFY' ELSE 'UNKNOWN' END",
+                    "BUSINESS_UNIT": "CASE WHEN '{lab_name}' = 'LGC' THEN 'UNIT_A' WHEN '{lab_name}' = 'Quest' THEN 'UNIT_B' ELSE 'UNKNOWN' END",
                     "QUALITY_MEASURE_ELIGIBLE": "CASE WHEN {result_value} < 60 THEN 'CKD_QUALITY_MEASURE' ELSE 'NONE' END"
                 }
             },
             "Care Team Alerts": {
-                "name": "CVS Care Team Alert System",
+                "name": "Care Team Alert System",
                 "type": "webhook",
-                "endpoint": "https://alerts.cvs.com/api/lab-critical",
+                "endpoint": "https://alerts.healthsystem.com/api/lab-critical",
                 "format": "json_webhook",
                 "description": "Real-time alerts for critical lab values across all BUs",
                 "required_mappings": {
@@ -352,14 +352,19 @@ with config_tab:
                 "conditional_mappings": {
                     "severity": "CASE WHEN {result_value} < 15 THEN 'CRITICAL' WHEN {result_value} < 30 THEN 'HIGH' ELSE 'MEDIUM' END",
                     "action_required": "CASE WHEN {result_value} < 30 THEN 'IMMEDIATE_FOLLOWUP' ELSE 'ROUTINE' END",
-                    "notify_business_unit": "CASE WHEN '{lab_name}' = 'LGC' THEN 'OAK_STREET_CARE_TEAM' WHEN '{lab_name}' = 'Quest' THEN 'SIGNIFY_CARE_TEAM' ELSE 'GENERAL_CARE_TEAM' END",
+                    "notify_business_unit": "CASE WHEN '{lab_name}' = 'LGC' THEN 'UNIT_A_CARE_TEAM' WHEN '{lab_name}' = 'Quest' THEN 'UNIT_B_CARE_TEAM' ELSE 'GENERAL_CARE_TEAM' END",
                     "escalation_path": "CASE WHEN {result_value} < 15 THEN 'NEPHROLOGIST_IMMEDIATE' WHEN {result_value} < 30 THEN 'PCP_24HR' ELSE 'ROUTINE_FOLLOWUP' END"
                 }
             }
         }
         
-        dest_selection = st.selectbox("Select Destination:", list(destination_templates.keys()))
-        dest_config = destination_templates[dest_selection]
+        # Add custom destinations from session state
+        all_destinations = destination_templates.copy()
+        if "custom_destinations" in st.session_state:
+            all_destinations.update(st.session_state.custom_destinations)
+        
+        dest_selection = st.selectbox("Select Destination:", list(all_destinations.keys()))
+        dest_config = all_destinations[dest_selection]
         
         st.info(f"**{dest_config['name']}** - {dest_config['description']}")
         
@@ -370,129 +375,363 @@ with config_tab:
                 st.write(feature)
             st.markdown("---")
         
-        # Basic configuration
-        with st.expander("🔧 Basic Configuration"):
-            col1, col2 = st.columns(2)
-            with col1:
-                endpoint = st.text_input("Endpoint", value=dest_config["endpoint"])
-                auth_type = st.selectbox("Authentication", ["oauth2", "api_key", "service_account"])
-            with col2:
-                output_format = st.text_input("Output Format", value=dest_config["format"])
+        # Interactive mapping configuration
+        st.subheader("🗺️ Interactive Field Mapping Editor")
         
-        # Field Mapping Configuration
-        st.subheader("🗺️ Field Mapping Configuration")
-        
-        # Canonical schema reference
-        with st.expander("📋 Canonical Schema Reference"):
-            canonical_schema = {
-                "patient_id": "Patient identifier",
-                "test_code": "LOINC code (98979-8 for eGFR)",
-                "test_name": "Human-readable test name",
-                "result_value": "Numeric result (e.g., 92)",
-                "unit": "Unit of measure (e.g., mL/min/1.73m2)",
-                "timestamp": "ISO datetime string",
-                "lab_name": "Laboratory name (LGC, Quest, etc)",
-                "status": "Result status (final, preliminary)",
-                "interpretation": "Normal/Abnormal flag"
-            }
-            st.json(canonical_schema)
-        
-        st.write("**Required Field Mappings:**")
-        mapping_config = {}
-        
-        for field, default_mapping in dest_config["required_mappings"].items():
-            col1, col2, col3 = st.columns([2, 4, 1])
+        # Toggle between view and edit modes
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            mapping_mode = st.radio("Mapping Mode:", ["View Mappings", "Edit Mappings", "Create New Destination"])
+        with col2:
+            if st.button("💾 Save Changes"):
+                st.success("Mapping changes saved!")
+
+        if mapping_mode == "Edit Mappings":
+            st.write(f"**Editing: {dest_config['name']}**")
             
-            with col1:
-                st.code(field)
+            # Editable required mappings
+            st.write("**Required Field Mappings (Editable):**")
+            updated_mappings = {}
             
-            with col2:
-                mapping_value = st.text_area(
-                    f"Mapping expression",
-                    value=default_mapping,
-                    key=f"mapping_{field}",
-                    height=60,
-                    help="Use {field_name} to reference canonical fields"
-                )
-                mapping_config[field] = mapping_value
-            
-            with col3:
-                if "{" in mapping_value and "}" in mapping_value:
-                    st.success("✓ Valid")
-                else:
-                    st.warning("⚠ Check")
-        
-        # Conditional mappings
-        if "conditional_mappings" in dest_config:
-            st.write("**Conditional/Calculated Mappings:**")
-            for field, expression in dest_config["conditional_mappings"].items():
-                col1, col2 = st.columns([2, 4])
+            for field, default_mapping in dest_config["required_mappings"].items():
+                col1, col2, col3 = st.columns([2, 4, 1])
+                
                 with col1:
                     st.code(field)
+                
                 with col2:
-                    st.code(expression, language="sql")
-        
-        # Mapping preview
-        if st.button("🔍 Preview Mapping with Sample Data"):
-            sample_data = {
-                "patient_id": "DOE12345",
-                "test_code": "98979-8",
-                "test_name": "eGFR (CKD-EPI)",
-                "result_value": 45,  # Critical value for demo
-                "unit": "mL/min/1.73m2",
-                "timestamp": "2025-08-05T14:25:00Z",
-                "lab_name": "Quest",
-                "status": "final",
-                "interpretation": "Low"
+                    # Make mappings editable
+                    new_mapping = st.text_area(
+                        f"Edit mapping for {field}",
+                        value=default_mapping,
+                        key=f"edit_mapping_{field}",
+                        height=80,
+                        help="Use {field_name} to reference canonical fields"
+                    )
+                    updated_mappings[field] = new_mapping
+                
+                with col3:
+                    # Validation
+                    if "{" in new_mapping and "}" in new_mapping:
+                        st.success("✓")
+                    else:
+                        st.error("⚠")
+            
+            # Save updated mappings to session state
+            if st.button("💾 Update Mappings"):
+                if "custom_mappings" not in st.session_state:
+                    st.session_state.custom_mappings = {}
+                st.session_state.custom_mappings[dest_selection] = updated_mappings
+                st.success(f"✅ Updated mappings for {dest_config['name']}")
+                st.balloons()
+            
+            # Add new field mapping
+            st.write("**Add New Field Mapping:**")
+            col1, col2, col3 = st.columns([2, 3, 1])
+            with col1:
+                new_field_name = st.text_input("New Field Name", placeholder="e.g., custom_flag")
+            with col2:
+                new_field_mapping = st.text_input("Mapping Expression", placeholder="e.g., '{result_value} > 60'")
+            with col3:
+                if st.button("➕ Add Field") and new_field_name and new_field_mapping:
+                    updated_mappings[new_field_name] = new_field_mapping
+                    st.success("Field added!")
+
+        elif mapping_mode == "Create New Destination":
+            st.write("**Create Custom Destination:**")
+            
+            with st.form("new_destination_form"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    new_dest_name = st.text_input("Destination Name", placeholder="e.g., Custom Epic System")
+                    new_dest_type = st.selectbox("Destination Type", ["fhir", "rest_api", "database", "webhook"])
+                    new_dest_endpoint = st.text_input("Endpoint URL", placeholder="https://api.example.com")
+                
+                with col2:
+                    new_dest_format = st.text_input("Output Format", placeholder="e.g., fhir_r4_bundle")
+                    new_dest_auth = st.selectbox("Authentication", ["oauth2", "api_key", "basic_auth", "certificate"])
+                    new_dest_description = st.text_area("Description", placeholder="Custom destination for...")
+                
+                st.write("**Define Field Mappings:**")
+                
+                # Dynamic field mapping creation
+                if "new_dest_fields" not in st.session_state:
+                    st.session_state.new_dest_fields = [{"field": "", "mapping": ""}]
+                
+                # Add field button
+                if st.form_submit_button("➕ Add Mapping Field"):
+                    st.session_state.new_dest_fields.append({"field": "", "mapping": ""})
+                    st.rerun()
+                
+                # Display existing fields
+                for i, field_mapping in enumerate(st.session_state.new_dest_fields):
+                    col1, col2, col3 = st.columns([2, 3, 1])
+                    with col1:
+                        field_name = st.text_input(f"Field {i+1}", value=field_mapping["field"], key=f"field_{i}")
+                        st.session_state.new_dest_fields[i]["field"] = field_name
+                    with col2:
+                        mapping_expr = st.text_input(f"Mapping {i+1}", value=field_mapping["mapping"], key=f"mapping_{i}")
+                        st.session_state.new_dest_fields[i]["mapping"] = mapping_expr
+                    with col3:
+                        if st.form_submit_button("🗑️", key=f"delete_{i}") and len(st.session_state.new_dest_fields) > 1:
+                            st.session_state.new_dest_fields.pop(i)
+                            st.rerun()
+                
+                # Create destination
+                if st.form_submit_button("🎯 Create Destination"):
+                    if new_dest_name:
+                        # Build new destination config
+                        new_destination = {
+                            "name": new_dest_name,
+                            "type": new_dest_type,
+                            "endpoint": new_dest_endpoint,
+                            "format": new_dest_format,
+                            "auth_type": new_dest_auth,
+                            "description": new_dest_description,
+                            "required_mappings": {}
+                        }
+                        
+                        # Add field mappings
+                        for field_mapping in st.session_state.new_dest_fields:
+                            if field_mapping["field"] and field_mapping["mapping"]:
+                                new_destination["required_mappings"][field_mapping["field"]] = field_mapping["mapping"]
+                        
+                        # Save to session state
+                        if "custom_destinations" not in st.session_state:
+                            st.session_state.custom_destinations = {}
+                        st.session_state.custom_destinations[new_dest_name] = new_destination
+                        
+                        st.success(f"✅ Created new destination: {new_dest_name}")
+                        st.balloons()
+                    else:
+                        st.error("Please provide a destination name")
+
+        else:  # View Mappings mode
+            # Basic configuration
+            with st.expander("🔧 Basic Configuration"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    endpoint = st.text_input("Endpoint", value=dest_config["endpoint"])
+                    auth_type = st.selectbox("Authentication", ["oauth2", "api_key", "service_account"])
+                with col2:
+                    output_format = st.text_input("Output Format", value=dest_config["format"])
+            
+            # Canonical schema reference
+            with st.expander("📋 Canonical Schema Reference"):
+                canonical_schema = {
+                    "patient_id": "Patient identifier",
+                    "test_code": "LOINC code (98979-8 for eGFR)",
+                    "test_name": "Human-readable test name",
+                    "result_value": "Numeric result (e.g., 92)",
+                    "unit": "Unit of measure (e.g., mL/min/1.73m2)",
+                    "timestamp": "ISO datetime string",
+                    "lab_name": "Laboratory name (LGC, Quest, etc)",
+                    "status": "Result status (final, preliminary)",
+                    "interpretation": "Normal/Abnormal flag"
+                }
+                st.json(canonical_schema)
+            
+            st.write("**Required Field Mappings:**")
+            mapping_config = {}
+            
+            # Use custom mappings if they exist
+            mappings_to_show = st.session_state.get("custom_mappings", {}).get(dest_selection, dest_config["required_mappings"])
+            
+            for field, default_mapping in mappings_to_show.items():
+                col1, col2, col3 = st.columns([2, 4, 1])
+                
+                with col1:
+                    st.code(field)
+                
+                with col2:
+                    st.text_area(
+                        f"Mapping expression",
+                        value=default_mapping,
+                        key=f"view_mapping_{field}",
+                        height=60,
+                        disabled=True,
+                        help="Use {field_name} to reference canonical fields"
+                    )
+                    mapping_config[field] = default_mapping
+                
+                with col3:
+                    if "{" in default_mapping and "}" in default_mapping:
+                        st.success("✓ Valid")
+                    else:
+                        st.warning("⚠ Check")
+            
+            # Conditional mappings
+            if "conditional_mappings" in dest_config:
+                st.write("**Conditional/Calculated Mappings:**")
+                for field, expression in dest_config["conditional_mappings"].items():
+                    col1, col2 = st.columns([2, 4])
+                    with col1:
+                        st.code(field)
+                    with col2:
+                        st.code(expression, language="sql")
+            
+            # Mapping preview
+            if st.button("🔍 Preview Mapping with Sample Data"):
+                sample_data = {
+                    "patient_id": "DOE12345",
+                    "test_code": "98979-8",
+                    "test_name": "eGFR (CKD-EPI)",
+                    "result_value": 45,  # Critical value for demo
+                    "unit": "mL/min/1.73m2",
+                    "timestamp": "2025-08-05T14:25:00Z",
+                    "lab_name": "Quest",
+                    "status": "final",
+                    "interpretation": "Low"
+                }
+                
+                st.subheader("🎯 Mapping Preview")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.write("**Sample Canonical Data:**")
+                    st.json(sample_data)
+                
+                with col2:
+                    st.write(f"**{dest_config['name']} Output:**")
+                    preview_output = {}
+                    
+                    for field, mapping in mapping_config.items():
+                        try:
+                            # Simple template replacement for demo
+                            output_value = mapping
+                            for key, value in sample_data.items():
+                                output_value = output_value.replace(f"{{{key}}}", str(value))
+                            
+                            # Handle JSON objects in mappings
+                            if output_value.startswith("{") and output_value.endswith("}"):
+                                try:
+                                    output_value = json.loads(output_value)
+                                except:
+                                    pass
+                            
+                            preview_output[field] = output_value
+                        except Exception as e:
+                            preview_output[field] = f"ERROR: {str(e)}"
+                    
+                    st.json(preview_output)
+                    
+                    # Show conditional mappings results
+                    if "conditional_mappings" in dest_config:
+                        st.write("**Conditional Results:**")
+                        conditional_results = {}
+                        for field, expression in dest_config["conditional_mappings"].items():
+                            if "< 30" in expression and sample_data["result_value"] < 30:
+                                if "CRITICAL" in expression:
+                                    conditional_results[field] = "CRITICAL"
+                                elif "IMMEDIATE" in expression:
+                                    conditional_results[field] = "IMMEDIATE_FOLLOWUP"
+                            elif "< 60" in expression and sample_data["result_value"] < 60:
+                                if "G3" in expression:
+                                    conditional_results[field] = "G3A"
+                                elif "LOW" in expression:
+                                    conditional_results[field] = "LOW"
+                        st.json(conditional_results)
+
+        # Source to Destination Mapping
+        st.markdown("---")
+        st.subheader("🔀 Source → Destination Routing Configuration")
+
+        # Show configured sources and destinations
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.write("**Available Sources:**")
+            available_sources = []
+            if "vendors" in st.session_state:
+                for vendor_name, vendor_config in st.session_state.vendors.items():
+                    available_sources.append(f"{vendor_name} ({vendor_config['type']})")
+                    st.write(f"📥 {vendor_name}")
+            else:
+                st.info("Configure sources first")
+
+        with col2:
+            st.write("**➡️ Routing Rules:**")
+            if available_sources:
+                # Create routing configuration
+                routing_rules = {}
+                for i, source in enumerate(available_sources):
+                    source_name = source.split(" (")[0]  # Extract name without type
+                    selected_destinations = st.multiselect(
+                        f"Route {source_name} to:",
+                        options=list(all_destinations.keys()),
+                        key=f"routing_{i}"
+                    )
+                    if selected_destinations:
+                        routing_rules[source_name] = selected_destinations
+                
+                # Save routing rules
+                if routing_rules and st.button("💾 Save Routing Rules"):
+                    st.session_state.routing_rules = routing_rules
+                    st.success("✅ Routing rules saved!")
+
+        with col3:
+            st.write("**Configured Routes:**")
+            if "routing_rules" in st.session_state:
+                for source, destinations in st.session_state.routing_rules.items():
+                    st.write(f"📥 **{source}**")
+                    for dest in destinations:
+                        st.write(f"  ↳ 📤 {dest}")
+            else:
+                st.info("No routing rules configured")
+
+        # Live Mapping Test
+        st.markdown("---")
+        st.subheader("🧪 Live Mapping Test")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.write("**Test Input Data:**")
+            test_data = {
+                "patient_id": st.text_input("Patient ID", value="TEST12345"),
+                "test_code": st.text_input("Test Code", value="98979-8"),
+                "result_value": st.number_input("Result Value", value=45.0),
+                "unit": st.text_input("Unit", value="mL/min/1.73m2"),
+                "timestamp": st.text_input("Timestamp", value="2025-08-05T14:25:00Z"),
+                "lab_name": st.text_input("Lab Name", value="Quest")
+            }
+
+        with col2:
+            st.write("**Live Mapping Output:**")
+            if st.button("🔄 Test Mapping"):
+                # Apply current mappings to test data
+                mappings_to_use = st.session_state.get("custom_mappings", {}).get(dest_selection, dest_config["required_mappings"])
+                
+                output = {}
+                for field, mapping_expr in mappings_to_use.items():
+                    try:
+                        # Simple template substitution
+                        result = mapping_expr
+                        for key, value in test_data.items():
+                            result = result.replace(f"{{{key}}}", str(value))
+                        output[field] = result
+                    except Exception as e:
+                        output[field] = f"ERROR: {str(e)}"
+                
+                st.json(output)
+
+        # Export Configuration
+        st.markdown("---")
+        if st.button("📥 Export Configuration"):
+            config_export = {
+                "sources": st.session_state.get("vendors", {}),
+                "destinations": all_destinations,
+                "custom_mappings": st.session_state.get("custom_mappings", {}),
+                "routing_rules": st.session_state.get("routing_rules", {})
             }
             
-            st.subheader("🎯 Mapping Preview")
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.write("**Sample Canonical Data:**")
-                st.json(sample_data)
-            
-            with col2:
-                st.write(f"**{dest_config['name']} Output:**")
-                preview_output = {}
-                
-                for field, mapping in mapping_config.items():
-                    try:
-                        # Simple template replacement for demo
-                        output_value = mapping
-                        for key, value in sample_data.items():
-                            output_value = output_value.replace(f"{{{key}}}", str(value))
-                        
-                        # Handle JSON objects in mappings
-                        if output_value.startswith("{") and output_value.endswith("}"):
-                            try:
-                                output_value = json.loads(output_value)
-                            except:
-                                pass
-                        
-                        preview_output[field] = output_value
-                    except Exception as e:
-                        preview_output[field] = f"ERROR: {str(e)}"
-                
-                st.json(preview_output)
-                
-                # Show conditional mappings results
-                if "conditional_mappings" in dest_config:
-                    st.write("**Conditional Results:**")
-                    conditional_results = {}
-                    for field, expression in dest_config["conditional_mappings"].items():
-                        if "< 30" in expression and sample_data["result_value"] < 30:
-                            if "CRITICAL" in expression:
-                                conditional_results[field] = "CRITICAL"
-                            elif "IMMEDIATE" in expression:
-                                conditional_results[field] = "IMMEDIATE_FOLLOWUP"
-                        elif "< 60" in expression and sample_data["result_value"] < 60:
-                            if "G3" in expression:
-                                conditional_results[field] = "G3A"
-                            elif "LOW" in expression:
-                                conditional_results[field] = "LOW"
-                    st.json(conditional_results)
+            st.download_button(
+                label="📥 Download RelayDX Configuration",
+                data=json.dumps(config_export, indent=2),
+                file_name="relaydx_config.json",
+                mime="application/json"
+            )
 
     with pipeline_tab:
         st.subheader("🔄 Active Pipeline Configuration")
@@ -503,7 +742,7 @@ with config_tab:
             
             pipeline_config = {
                 "pipelineName": "RelayDX_eGFR_Demo",
-                "description": "Vendor-agnostic eGFR processing for CVS Health Epic migration",
+                "description": "Vendor-agnostic eGFR processing for enterprise healthcare",
                 "sources": list(st.session_state.vendors.keys()),
                 "destinations": [dest_selection],
                 "processing_stages": [
@@ -534,9 +773,9 @@ connectors:
 
   outbound:
     - name: {dest_selection.replace(' ', '-').lower()}
-      type: {destination_templates[dest_selection]['type']}
-      endpoint: {destination_templates[dest_selection]['endpoint']}
-      format: {destination_templates[dest_selection]['format']}
+      type: {all_destinations[dest_selection]['type']}
+      endpoint: {all_destinations[dest_selection]['endpoint']}
+      format: {all_destinations[dest_selection]['format']}
 
 stages:
   - id: ingest
@@ -558,6 +797,8 @@ stages:
                     "relaydx_pipeline.yaml",
                     "text/yaml"
                 )
+        else:
+            st.info("Configure sources first to see active pipeline")
 
 with results_tab:
     st.header("📊 Processed Lab Results")
@@ -631,9 +872,9 @@ with scenario_col1:
 
 with scenario_col2:
     if st.button("🏥 Multi-System Demo"):
-        st.success("✅ Demo: Oak Street Epic vs Signify Platform")
+        st.success("✅ Demo: Epic vs Health Platform")
         st.info("Same eGFR data, different system formats")
-        st.code("Canonical → Epic FHIR Bundle\nCanonical → Signify REST API")
+        st.code("Canonical → Epic FHIR Bundle\nCanonical → Health Platform REST API")
 
 with scenario_col3:
     if st.button("⚡ Critical Value Demo"):
@@ -643,4 +884,4 @@ with scenario_col3:
 
 # Footer
 st.markdown("---")
-st.markdown("*RelayDX Platform Demo*")
+st.markdown("*RelayDX Platform Demo | Enterprise Healthcare Integration Platform*")
