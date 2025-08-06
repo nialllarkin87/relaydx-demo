@@ -1,0 +1,276 @@
+{
+  "batchId": "LGC-BATCH-20250806-001",
+  "processingDate": "2025-08-06T08:30:00Z",
+  "labResults": [
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Normal",
+      "headline": "Your eGFR test result has been returned as NORMAL.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "95",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "Sarah",
+        "lastName": "Johnson",
+        "dob": "1985-03-15",
+        "patientId": "LGC-001"
+      },
+      "timeStamp": "2025-08-06T07:15:00Z"
+    },
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Low",
+      "headline": "Your eGFR test result indicates reduced kidney function.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "45",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "Robert",
+        "lastName": "Martinez",
+        "dob": "1962-11-08",
+        "patientId": "LGC-002"
+      },
+      "timeStamp": "2025-08-06T07:20:00Z"
+    },
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Normal",
+      "headline": "Your eGFR test result has been returned as NORMAL.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "102",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "Emily",
+        "lastName": "Chen",
+        "dob": "1978-07-22",
+        "patientId": "LGC-003"
+      },
+      "timeStamp": "2025-08-06T07:25:00Z"
+    },
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Critical",
+      "headline": "Your eGFR test result indicates severely reduced kidney function.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "18",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "James",
+        "lastName": "Wilson",
+        "dob": "1948-12-03",
+        "patientId": "LGC-004"
+      },
+      "timeStamp": "2025-08-06T07:30:00Z"
+    },
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Normal",
+      "headline": "Your eGFR test result has been returned as NORMAL.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "88",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "Maria",
+        "lastName": "Rodriguez",
+        "dob": "1990-04-18",
+        "patientId": "LGC-005"
+      },
+      "timeStamp": "2025-08-06T07:35:00Z"
+    },
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Low",
+      "headline": "Your eGFR test result indicates reduced kidney function.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "52",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "David",
+        "lastName": "Thompson",
+        "dob": "1955-09-12",
+        "patientId": "LGC-006"
+      },
+      "timeStamp": "2025-08-06T07:40:00Z"
+    },
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Normal",
+      "headline": "Your eGFR test result has been returned as NORMAL.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "94",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "Jennifer",
+        "lastName": "Davis",
+        "dob": "1982-01-25",
+        "patientId": "LGC-007"
+      },
+      "timeStamp": "2025-08-06T07:45:00Z"
+    },
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Low",
+      "headline": "Your eGFR test result indicates reduced kidney function.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "35",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "Michael",
+        "lastName": "Brown",
+        "dob": "1967-06-30",
+        "patientId": "LGC-008"
+      },
+      "timeStamp": "2025-08-06T07:50:00Z"
+    },
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Normal",
+      "headline": "Your eGFR test result has been returned as NORMAL.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "97",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "Lisa",
+        "lastName": "Anderson",
+        "dob": "1979-10-14",
+        "patientId": "LGC-009"
+      },
+      "timeStamp": "2025-08-06T07:55:00Z"
+    },
+    {
+      "biomarkerName": "Estimated Glomerular Filtration Rate",
+      "kind": "Quantitative",
+      "descriptor": "Critical",
+      "headline": "Your eGFR test result indicates severely reduced kidney function.",
+      "testCode": "EGFR001",
+      "quantitativeValue": {
+        "value": "12",
+        "unit": "mL/min/1.73m2",
+        "lowerBound": 90,
+        "upperBound": 120
+      },
+      "coding": [
+        {
+          "system": "https://loinc.org",
+          "code": "98979-8",
+          "display": "Glomerular filtration rate/1.73 sq M.predicted by CKD-EPI creatinine equation"
+        }
+      ],
+      "patientIdentification": {
+        "firstName": "Patricia",
+        "lastName": "Taylor",
+        "dob": "1943-05-07",
+        "patientId": "LGC-010"
+      },
+      "timeStamp": "2025-08-06T08:00:00Z"
+    }
+  ]
+}
