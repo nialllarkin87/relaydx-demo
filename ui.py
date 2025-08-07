@@ -43,6 +43,9 @@ with demo_tab:
             name = uploaded_file.name.lower()
 
             # JSON branch (for LGC eGFR files)
+            # Replace your existing LGC JSON processing section in ui.py with this:
+
+            # JSON branch (for LGC eGFR files) - FIXED VERSION
             if name.endswith(".json"):
                 st.subheader("📄 JSON Parsing (LGC Format)")
                 try:
@@ -63,15 +66,17 @@ with demo_tab:
                     converted_results = []
                     normalized_results = []
                     persisted_ids = []
-                    patient_info = json_data.get("patientIdentification", {})
-                    timestamp = json_data.get("timeStamp", "")
                     
                     for lab in lab_results:
+                        # Get patient info from each lab result (not top level)
+                        patient_info = lab.get("patientIdentification", {})
+                        timestamp = lab.get("timeStamp", "")
+                        
                         converted = {
-                            "patient_id": f"{patient_info.get('lastName', 'UNK')}^{patient_info.get('firstName', 'UNK')}",
-                            "test_code": lab.get("coding", [{}])[0].get("code", "UNKNOWN") if lab.get("coding") else "UNKNOWN",
+                            "patient_id": f"{patient_info.get('lastName', 'UNK')}^{patient_info.get('firstName', 'UNK')}^{patient_info.get('patientId', 'UNK')}",
+                            "test_code": lab.get("coding", [{}])[0].get("code", "98979-8") if lab.get("coding") else "98979-8",
                             "result_value": float(lab.get("quantitativeValue", {}).get("value", 0)) if lab.get("quantitativeValue") else 0,
-                            "unit": lab.get("quantitativeValue", {}).get("unit", "") if lab.get("quantitativeValue") else "",
+                            "unit": lab.get("quantitativeValue", {}).get("unit", "mL/min/1.73m2") if lab.get("quantitativeValue") else "mL/min/1.73m2",
                             "timestamp": timestamp
                         }
                         converted_results.append(converted)
