@@ -942,25 +942,25 @@ stages:
 st.markdown("---")
 st.subheader("🎭 Demo Scenarios for Stakeholders")
 
-scenario_col1, scenario_col2, scenario_col3 = st.columns(3)
+#scenario_col1, scenario_col2, scenario_col3 = st.columns(3)
 
-with scenario_col1:
-    if st.button("🔄 Vendor Switch Demo"):
-        st.success("✅ Demo: LGC → Quest vendor switch")
-        st.info("Same Epic output, different input format")
-        st.code("LGC JSON → Canonical → Epic FHIR\nQuest CSV → Canonical → Epic FHIR")
+#with scenario_col1:
+#    if st.button("🔄 Vendor Switch Demo"):
+#        st.success("✅ Demo: LGC → Quest vendor switch")
+#       st.info("Same Epic output, different input format")
+#       st.code("LGC JSON → Canonical → Epic FHIR\nQuest CSV → Canonical → Epic FHIR")
 
-with scenario_col2:
-    if st.button("🏥 Multi-System Demo"):
-        st.success("✅ Demo: Epic vs Health Platform")
-        st.info("Same eGFR data, different system formats")
-        st.code("Canonical → Epic FHIR Bundle\nCanonical → Health Platform REST API")
+#with scenario_col2:
+#   if st.button("🏥 Multi-System Demo"):
+#       st.success("✅ Demo: Epic vs Health Platform")
+#       st.info("Same eGFR data, different system formats")
+#        st.code("Canonical → Epic FHIR Bundle\nCanonical → Health Platform REST API")
 
-with scenario_col3:
-    if st.button("⚡ Critical Value Demo"):
-        st.success("✅ Demo: eGFR < 30 critical alert")
-        st.info("Conditional routing to care team")
-        st.code("Normal eGFR → Epic only\nCritical eGFR → Epic + Alerts")
+#with scenario_col3:
+#   if st.button("⚡ Critical Value Demo"):
+#        st.success("✅ Demo: eGFR < 30 critical alert")
+#        st.info("Conditional routing to care team")
+#        st.code("Normal eGFR → Epic only\nCritical eGFR → Epic + Alerts")
 
 # Footer
 st.markdown("---")
