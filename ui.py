@@ -939,8 +939,8 @@ stages:
             st.info("Configure sources first to see active pipeline")
 
 # Demo scenarios at bottom
-st.markdown("---")
-st.subheader("🎭 Demo Scenarios for Stakeholders")
+#st.markdown("---")
+#st.subheader("🎭 Demo Scenarios for Stakeholders")
 
 #scenario_col1, scenario_col2, scenario_col3 = st.columns(3)
 
